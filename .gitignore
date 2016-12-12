@@ -2,3 +2,5 @@
 *.iml
 .DS_Store
 out/
+*.class
+javadoc-all/
