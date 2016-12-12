@@ -1,0 +1,6 @@
+# Sets the CPSEPARATOR variable. Meant to be included in a main Makefile. This
+# This Makefile fragment depends on the existence of build/PathSeparator.class.
+# The main Makefile should capture this dependency, and cause the class file to
+# be built if it does not exist (or is out of date).
+
+CPSEPARATOR = $(shell java build.PathSeparator)
