@@ -1,5 +1,7 @@
 package rmi;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.*;
 
 /** RMI skeleton
@@ -26,6 +28,12 @@ import java.net.*;
 */
 public class Skeleton<T>
 {
+    private Class<T> ci;
+    private T server;
+    private InetSocketAddress sockAddr;
+    private ListenThread listenThread;
+    private Thread thread;
+
     /** Creates a <code>Skeleton</code> with no initial server address. The
         address will be determined by the system when <code>start</code> is
         called. Equivalent to using <code>Skeleton(null)</code>.
@@ -47,7 +55,14 @@ public class Skeleton<T>
      */
     public Skeleton(Class<T> c, T server)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (c == null || server == null)
+            throw new NullPointerException();
+
+        if (!c.isInterface() || !isRemoteInterface(c))
+            throw new Error("Parameter c is not a remote interface");
+
+        this.ci = c;
+        this.server = server;
     }
 
     /** Creates a <code>Skeleton</code> with the given initial server address.
@@ -70,7 +85,8 @@ public class Skeleton<T>
      */
     public Skeleton(Class<T> c, T server, InetSocketAddress address)
     {
-        throw new UnsupportedOperationException("not implemented");
+        this(c, server);
+        this.sockAddr = address;
     }
 
     /** Called when the listening thread exits.
@@ -141,7 +157,20 @@ public class Skeleton<T>
      */
     public synchronized void start() throws RMIException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (sockAddr == null)
+            sockAddr = new InetSocketAddress(2048);
+
+        if (thread != null && thread.isAlive())
+            throw new RMIException("Listening thread already running, unable to create again");
+
+        try {
+            listenThread = new ListenThread<>(ci, server, new ServerSocket(sockAddr.getPort()));
+            thread = new Thread(listenThread);
+            thread.start();
+        }
+        catch (IOException ioe) {
+            throw new RMIException("I/O exception, unable to create listening socket", ioe.getCause());
+        }
     }
 
     /** Stops the skeleton server, if it is already running.
@@ -155,6 +184,42 @@ public class Skeleton<T>
      */
     public synchronized void stop()
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (thread == null || !thread.isAlive())
+            return;
+        listenThread.cancel();
+
+        try {
+            thread.join();
+            stopped(null);
+        }
+        catch (Exception e) {
+            stopped(e);
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean isRemoteInterface(Class<?> c) {
+        for (Method method : c.getMethods()) {
+            boolean isRemote = false;
+            Class<?> [] exceptionTypes = method.getExceptionTypes();
+
+            if (exceptionTypes.length == 0) return false;
+
+            for (Class<?> ex : exceptionTypes)
+                isRemote |= ex.equals(RMIException.class);
+
+            if (!isRemote)
+                return false;
+        }
+
+        return true;
+    }
+
+    public Thread getThread() {
+        return thread;
+    }
+
+    public InetSocketAddress getSockAddr() {
+        return sockAddr;
     }
 }
