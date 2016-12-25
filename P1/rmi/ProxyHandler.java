@@ -76,8 +76,8 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
                     // Method may throw their own exceptions
                     if (Arrays.asList(method.getExceptionTypes()).contains(e.getClass()))
                         throw e;
-                    // e.printStackTrace();
-                    return null;
+
+                    throw new RMIException(e);
                 }
             }
         }
