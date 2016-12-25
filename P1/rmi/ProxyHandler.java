@@ -43,7 +43,7 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
             }
 
             case "hashCode": {
-                return sockAddr.hashCode();
+                return (sockAddr.toString() + ci.toString()).hashCode();
             }
 
             case "toString": {
