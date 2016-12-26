@@ -169,7 +169,7 @@ public class Skeleton<T>
             thread.start();
         }
         catch (IOException ioe) {
-            throw new RMIException("I/O exception, unable to create listening socket", ioe.getCause());
+            throw new RMIException("I/O exception, unable to create listening socket", ioe);
         }
     }
 

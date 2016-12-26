@@ -1,10 +1,24 @@
 package naming;
 
 import java.io.*;
+import java.net.InetSocketAddress;
+import java.util.HashMap;
 
 import rmi.*;
 import common.*;
 import storage.*;
+
+class ServerStubs
+{
+    public Storage storageStub;
+    public Command commandStub;
+
+    public ServerStubs(Storage storageStub, Command commandStub)
+    {
+        this.storageStub = storageStub;
+        this.commandStub = commandStub;
+    }
+}
 
 /** Naming server.
 
@@ -31,6 +45,12 @@ import storage.*;
  */
 public class NamingServer implements Service, Registration
 {
+    private PathNode root;
+    private HashMap<PathNode, ServerStubs> nodeStubMap;
+    private Skeleton<Registration> regSkeleton;
+    private Skeleton<Service> serSkeleton;
+    private volatile boolean canStart = true;
+
     /** Creates the naming server object.
 
         <p>
@@ -38,7 +58,12 @@ public class NamingServer implements Service, Registration
      */
     public NamingServer()
     {
-        throw new UnsupportedOperationException("not implemented");
+        this.root = new PathNode(false, new Path());
+        this.nodeStubMap = new HashMap<>();
+        this.regSkeleton = new Skeleton<Registration>(Registration.class, this,
+                new InetSocketAddress(NamingStubs.REGISTRATION_PORT));
+        this.serSkeleton = new Skeleton<Service>(Service.class, this,
+                new InetSocketAddress(NamingStubs.SERVICE_PORT));
     }
 
     /** Starts the naming server.
@@ -54,7 +79,17 @@ public class NamingServer implements Service, Registration
      */
     public synchronized void start() throws RMIException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (!canStart)
+            throw new RMIException("Skeleton failed to start. Do not start naming server again");
+
+        try {
+            regSkeleton.start();
+            serSkeleton.start();
+        }
+        catch (RMIException re) {
+            canStart = false;
+            throw new RMIException("Unable to start registration/service skeleton", re);
+        }
     }
 
     /** Stops the naming server.
@@ -68,7 +103,16 @@ public class NamingServer implements Service, Registration
      */
     public void stop()
     {
-        throw new UnsupportedOperationException("not implemented");
+        try {
+            regSkeleton.stop();
+            serSkeleton.stop();
+        }
+        catch (Exception e) {
+            stopped(e);
+        }
+        finally {
+            canStart = false;
+        }
     }
 
     /** Indicates that the server has completely shut down.

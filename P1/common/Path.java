@@ -2,7 +2,6 @@ package common;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /** Distributed filesystem paths.
 
@@ -123,7 +122,7 @@ public class Path implements Iterable<String>, Serializable
         return allPaths.toArray(new Path[0]);
     }
 
-    // @SuppressWarnings("ConstantConditions")
+    @SuppressWarnings("ConstantConditions")
     public static void listRecursive(File directory, Path parent, ArrayList<Path> allPaths) throws FileNotFoundException
     {
         if (!directory.exists())
