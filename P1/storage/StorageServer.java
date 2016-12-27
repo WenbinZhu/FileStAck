@@ -16,6 +16,11 @@ import naming.*;
  */
 public class StorageServer implements Storage, Command
 {
+    private File root;
+    private Skeleton<Storage> storageSkeleton;
+    private Skeleton<Command> commandSkeleton;
+    private volatile boolean canStart = true;
+
     /** Creates a storage server, given a directory on the local filesystem.
 
         @param root Directory on the local filesystem. The contents of this
@@ -24,7 +29,12 @@ public class StorageServer implements Storage, Command
     */
     public StorageServer(File root)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (root == null)
+            throw new NullPointerException("Parameter root is null");
+
+        this.root = root;
+        this.storageSkeleton = new Skeleton<Storage>(Storage.class, this);
+        this.commandSkeleton = new Skeleton<Command>(Command.class, this);
     }
 
     /** Starts the storage server and registers it with the given naming
@@ -50,7 +60,26 @@ public class StorageServer implements Storage, Command
     public synchronized void start(String hostname, Registration naming_server)
         throws RMIException, UnknownHostException, FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (!canStart)
+            throw new RMIException("Storage server has stopped, cannot be restarted");
+        if (!root.exists() || root.isFile())
+            throw new FileNotFoundException("Root either does not exists or is a file");
+
+        storageSkeleton.start();
+        commandSkeleton.start();
+
+        // Check if hostname is valid, may throw UnknownHostException
+        InetAddress address = InetAddress.getByName(hostname);
+
+        Storage storageStub = Stub.create(Storage.class, storageSkeleton, hostname);
+        Command commandStub = Stub.create(Command.class, commandSkeleton, hostname);
+
+        Path[] duplicates = naming_server.register(storageStub, commandStub, Path.list(root));
+
+        for (Path dupPath : duplicates) {
+            dupPath.toFile(root).delete();
+            prune(dupPath.toFile(root).getParentFile());
+        }
     }
 
     /** Stops the storage server.
@@ -60,7 +89,10 @@ public class StorageServer implements Storage, Command
      */
     public void stop()
     {
-        throw new UnsupportedOperationException("not implemented");
+        canStart = false;
+        storageSkeleton.stop();
+        commandSkeleton.stop();
+        stopped(null);
     }
 
     /** Called when the storage server has shut down.
@@ -104,5 +136,21 @@ public class StorageServer implements Storage, Command
     public synchronized boolean delete(Path path)
     {
         throw new UnsupportedOperationException("not implemented");
+    }
+
+
+    /** Prune empty directories bottom-up
+     */
+    private synchronized void prune(File parent)
+    {
+        if (parent == root)
+            return;
+
+        if (parent.list().length == 0)
+            parent.delete();
+        else
+            return;
+
+        prune(parent.getParentFile());
     }
 }

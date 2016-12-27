@@ -157,14 +157,20 @@ public class Skeleton<T>
      */
     public synchronized void start() throws RMIException
     {
-        if (sockAddr == null)
-            sockAddr = new InetSocketAddress(2048);
+        ServerSocket serverSocket;
 
         if (thread != null && thread.isAlive())
             throw new RMIException("Listening thread already running, unable to create again");
 
         try {
-            listenThread = new ListenThread<>(ci, server, new ServerSocket(sockAddr.getPort()));
+            if (sockAddr == null) {
+                serverSocket = new ServerSocket(0);
+                sockAddr = new InetSocketAddress(serverSocket.getLocalPort());
+            }
+            else
+                serverSocket = new ServerSocket(sockAddr.getPort());
+
+            listenThread = new ListenThread<>(ci, server, serverSocket);
             thread = new Thread(listenThread);
             thread.start();
         }
