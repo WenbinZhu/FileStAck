@@ -2,23 +2,12 @@ package naming;
 
 import java.io.*;
 import java.net.InetSocketAddress;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.HashSet;
 
 import rmi.*;
 import common.*;
 import storage.*;
-
-class ServerStubs
-{
-    public Storage storageStub;
-    public Command commandStub;
-
-    public ServerStubs(Storage storageStub, Command commandStub)
-    {
-        this.storageStub = storageStub;
-        this.commandStub = commandStub;
-    }
-}
 
 /** Naming server.
 
@@ -46,9 +35,9 @@ class ServerStubs
 public class NamingServer implements Service, Registration
 {
     private PathNode root;
-    private HashMap<PathNode, ServerStubs> nodeStubMap;
     private Skeleton<Registration> regSkeleton;
     private Skeleton<Service> serSkeleton;
+    private HashSet<ServerStubs> registeredStubs;
     private volatile boolean canStart = true;
 
     /** Creates the naming server object.
@@ -58,12 +47,12 @@ public class NamingServer implements Service, Registration
      */
     public NamingServer()
     {
-        this.root = new PathNode(false, new Path());
-        this.nodeStubMap = new HashMap<>();
+        this.root = new PathNode(new Path(), null);
         this.regSkeleton = new Skeleton<Registration>(Registration.class, this,
                 new InetSocketAddress(NamingStubs.REGISTRATION_PORT));
         this.serSkeleton = new Skeleton<Service>(Service.class, this,
                 new InetSocketAddress(NamingStubs.SERVICE_PORT));
+        this.registeredStubs = new HashSet<>();
     }
 
     /** Starts the naming server.
@@ -132,7 +121,10 @@ public class NamingServer implements Service, Registration
     @Override
     public boolean isDirectory(Path path) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (path == null)
+            throw new NullPointerException("Path parameter is null");
+
+        return root.getNodeByPath(path).isFile();
     }
 
     @Override
@@ -163,7 +155,15 @@ public class NamingServer implements Service, Registration
     @Override
     public Storage getStorage(Path file) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (file == null)
+            throw new NullPointerException("Path parameter is null");
+
+        PathNode pathNode = root.getNodeByPath(file);
+
+        if (!pathNode.isFile())
+            throw new FileNotFoundException("Unable to get storage stub, path is a directory");
+
+        return root.getStubs().storageStub;
     }
 
     // The method register is documented in Registration.java.
@@ -171,6 +171,38 @@ public class NamingServer implements Service, Registration
     public Path[] register(Storage client_stub, Command command_stub,
                            Path[] files)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (client_stub == null || command_stub == null || files == null)
+            throw new NullPointerException("Parameters of register function has null value");
+
+        PathNode curNode = root;
+        ArrayList<Path> duplicates = new ArrayList<>();
+        ServerStubs stubs = new ServerStubs(client_stub, command_stub);
+
+        if (registeredStubs.contains(stubs))
+            throw new IllegalStateException("This storage server has already registered");
+
+        for (Path path : files) {
+            for (String component : path) {
+                PathNode childNode = curNode.getChildren().get(component);
+
+                if (childNode != null && childNode.isFile()) {
+                    duplicates.add(path);
+                    break;
+                }
+                else if (childNode != null && !childNode.isFile()) {
+                    curNode = childNode;
+                }
+                else {
+                    curNode.addChild(component, new PathNode(new Path(curNode.getNodePath(), component), null));
+                    curNode = curNode.getChildren().get(component);
+                }
+
+                // Deal with the leaf node
+                curNode.setStubs(stubs);
+                registeredStubs.add(stubs);
+            }
+        }
+
+        return duplicates.toArray(new Path[0]);
     }
 }

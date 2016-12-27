@@ -2,33 +2,77 @@ package naming;
 
 import common.Path;
 import rmi.RMIException;
+import storage.Command;
+import storage.Storage;
 
 import java.io.FileNotFoundException;
 import java.util.HashMap;
+
+/** Storage and Command stub pair
+ */
+class ServerStubs
+{
+    public Storage storageStub;
+    public Command commandStub;
+
+    public ServerStubs(Storage storageStub, Command commandStub)
+    {
+        this.storageStub = storageStub;
+        this.commandStub = commandStub;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        ServerStubs that = (ServerStubs) o;
+
+        return storageStub.equals(that.storageStub) && commandStub.equals(that.commandStub);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = storageStub.hashCode();
+        result = 31 * result + commandStub.hashCode();
+
+        return result;
+    }
+}
 
 /** File node in naming server's directory tree
  */
 public class PathNode
 {
     private Path nodePath;
-    private boolean isFile;
+    private ServerStubs serverStubs;
     private HashMap<String, PathNode> childNodes;
 
-    public PathNode(boolean isFile, Path nodePath)
+    public PathNode(Path nodePath, ServerStubs serverStubs)
     {
-        this.isFile = isFile;
         this.nodePath = nodePath;
+        this.serverStubs = serverStubs;
         this.childNodes = new HashMap<>();
     }
 
     public boolean isFile()
     {
-        return isFile;
+        return serverStubs != null;
     }
 
-    public PathNode getChild(String component)
+    public Path getNodePath()
     {
-        return childNodes.get(component);
+        return nodePath;
+    }
+
+    public ServerStubs getStubs()
+    {
+        return serverStubs;
+    }
+
+    public void setStubs(ServerStubs stubs)
+    {
+        serverStubs = stubs;
     }
 
     public HashMap<String, PathNode> getChildren()
@@ -36,10 +80,13 @@ public class PathNode
         return childNodes;
     }
 
-    public void addChild(String component, PathNode child) throws RMIException
+    public void addChild(String component, PathNode child) throws UnsupportedOperationException
     {
+        if (serverStubs == null)
+            throw new UnsupportedOperationException("Unable to add child to a leaf node");
+
         if (childNodes.containsKey(component))
-            throw new RMIException("Unable to add an existing node again");
+            throw new UnsupportedOperationException("Unable to add an existing node again");
 
         childNodes.put(component, child);
     }
