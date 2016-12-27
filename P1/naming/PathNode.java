@@ -91,10 +91,10 @@ public class PathNode
         childNodes.put(component, child);
     }
 
-    public void deleteChild(String component) throws RMIException
+    public void deleteChild(String component) throws UnsupportedOperationException
     {
         if (!childNodes.containsKey(component))
-            throw new RMIException("Unable to delete a non-existing node");
+            throw new UnsupportedOperationException("Unable to delete a non-existing node");
 
         childNodes.remove(component);
     }
