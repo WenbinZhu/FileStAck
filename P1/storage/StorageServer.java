@@ -19,7 +19,7 @@ public class StorageServer implements Storage, Command
     private File root;
     private Skeleton<Storage> storageSkeleton;
     private Skeleton<Command> commandSkeleton;
-    private volatile boolean canStart = true;
+    private volatile boolean canStart;
 
     /** Creates a storage server, given a directory on the local filesystem.
 
@@ -32,9 +32,13 @@ public class StorageServer implements Storage, Command
         if (root == null)
             throw new NullPointerException("Parameter root is null");
 
+        if (!root.exists() || !root.isDirectory())
+            throw new IllegalArgumentException("Root does not exist or refer to a directory");
+
         this.root = root;
         this.storageSkeleton = new Skeleton<Storage>(Storage.class, this);
         this.commandSkeleton = new Skeleton<Command>(Command.class, this);
+        this.canStart = true;
     }
 
     /** Starts the storage server and registers it with the given naming
@@ -62,6 +66,7 @@ public class StorageServer implements Storage, Command
     {
         if (!canStart)
             throw new RMIException("Storage server has stopped, cannot be restarted");
+
         if (!root.exists() || root.isFile())
             throw new FileNotFoundException("Root either does not exists or is a file");
 
@@ -108,42 +113,125 @@ public class StorageServer implements Storage, Command
     @Override
     public synchronized long size(Path file) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        File f = file.toFile(root);
+
+        if (!f.exists() || !f.isFile())
+            throw new FileNotFoundException("File cannot be found or the path refers to a directory");
+
+        return f.length();
     }
 
     @Override
     public synchronized byte[] read(Path file, long offset, int length)
         throws FileNotFoundException, IOException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (file == null)
+            throw new NullPointerException();
+
+        File f = file.toFile(root);
+
+        if (!f.exists() || !f.isFile())
+            throw new FileNotFoundException("File cannot be found or the path refers to a directory");
+
+        if (!f.canRead())
+            throw new IOException("File cannot be read");
+
+        if (offset < 0 || length < 0 || (offset + length) > f.length())
+            throw new IndexOutOfBoundsException("Read parameter offset or length out of file's bound");
+
+        byte[] bytes = new byte[length];
+        RandomAccessFile reader = new RandomAccessFile(f, "r");
+        reader.seek(offset);
+        reader.readFully(bytes, 0, length);
+
+        return bytes;
     }
 
     @Override
     public synchronized void write(Path file, long offset, byte[] data)
         throws FileNotFoundException, IOException
     {
-        throw new UnsupportedOperationException("not implemented");
+        File f = file.toFile(root);
+
+        if (!f.exists() || !f.isFile())
+            throw new FileNotFoundException("File cannot be found or the path refers to a directory");
+
+        if (!f.canWrite())
+            throw new IOException("File cannot be written");
+
+        if (offset < 0)
+            throw new IndexOutOfBoundsException("Read parameter offset or length out of file's bound");
+
+        RandomAccessFile writer = new RandomAccessFile(f, "rw");
+        writer.seek(offset);
+        writer.write(data);
     }
 
     // The following methods are documented in Command.java.
     @Override
     public synchronized boolean create(Path file)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (file.isRoot())
+            return false;
+
+        File newFile = file.toFile(root);
+        File parent = newFile.getParentFile();
+
+        try {
+            if (!parent.mkdirs())
+                prune(parent);
+            return newFile.createNewFile();
+        }
+        catch (IOException ioe) {
+            ioe.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     public synchronized boolean delete(Path path)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (path.isRoot())
+            return false;
+
+        File f = path.toFile(root);
+
+        if (!f.exists())
+            return false;
+
+        if (f.isDirectory())
+            return deleteDir(f);
+
+        return f.delete();
     }
 
+    /** Delete directory recursively
+
+        <p>
+        If a directory is not empty, try to delete all its contents
+        and then delete it when it becomes empty
+     */
+    private boolean deleteDir(File file)
+    {
+        if (file.isDirectory()) {
+            for (File f : file.listFiles()) {
+                if (!deleteDir(f))
+                    return false;
+            }
+        }
+
+        return file.delete();
+    }
 
     /** Prune empty directories bottom-up
+
+        <p>
+        If parent directory is empty, delete parent and
+        then check the grandparent, until reaches root
      */
     private synchronized void prune(File parent)
     {
-        if (parent == root)
+        if (!parent.exists() || parent == root || !parent.isDirectory())
             return;
 
         if (parent.list().length == 0)

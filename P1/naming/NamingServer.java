@@ -38,7 +38,7 @@ public class NamingServer implements Service, Registration
     private Skeleton<Registration> regSkeleton;
     private Skeleton<Service> serSkeleton;
     private HashSet<ServerStubs> registeredStubs;
-    private volatile boolean canStart = true;
+    private volatile boolean canStart;
 
     /** Creates the naming server object.
 
@@ -53,6 +53,7 @@ public class NamingServer implements Service, Registration
         this.serSkeleton = new Skeleton<Service>(Service.class, this,
                 new InetSocketAddress(NamingStubs.SERVICE_PORT));
         this.registeredStubs = new HashSet<>();
+        this.canStart = true;
     }
 
     /** Starts the naming server.

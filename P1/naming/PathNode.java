@@ -1,7 +1,6 @@
 package naming;
 
 import common.Path;
-import rmi.RMIException;
 import storage.Command;
 import storage.Storage;
 
