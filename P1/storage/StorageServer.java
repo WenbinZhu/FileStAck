@@ -6,6 +6,7 @@ import java.net.*;
 import common.*;
 import rmi.*;
 import naming.*;
+import sun.org.mozilla.javascript.internal.EcmaError;
 
 /** Storage server.
 
@@ -94,10 +95,18 @@ public class StorageServer implements Storage, Command
      */
     public void stop()
     {
-        canStart = false;
-        storageSkeleton.stop();
-        commandSkeleton.stop();
-        stopped(null);
+        try {
+            storageSkeleton.stop();
+            commandSkeleton.stop();
+            stopped(null);
+        }
+        catch (Exception e) {
+            stopped(e);
+            e.printStackTrace();
+        }
+        finally {
+            canStart = false;
+        }
     }
 
     /** Called when the storage server has shut down.

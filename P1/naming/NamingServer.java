@@ -96,9 +96,11 @@ public class NamingServer implements Service, Registration
         try {
             regSkeleton.stop();
             serSkeleton.stop();
+            stopped(null);
         }
         catch (Exception e) {
             stopped(e);
+            e.printStackTrace();
         }
         finally {
             canStart = false;
@@ -175,20 +177,24 @@ public class NamingServer implements Service, Registration
         if (client_stub == null || command_stub == null || files == null)
             throw new NullPointerException("Parameters of register function has null value");
 
-        PathNode curNode = root;
+        PathNode curNode;
         ArrayList<Path> duplicates = new ArrayList<>();
         ServerStubs stubs = new ServerStubs(client_stub, command_stub);
 
         if (registeredStubs.contains(stubs))
             throw new IllegalStateException("This storage server has already registered");
 
+        registeredStubs.add(stubs);
+
         for (Path path : files) {
+            // System.out.println(path + " " + duplicates.size());
+            curNode = root;
+
             for (String component : path) {
                 PathNode childNode = curNode.getChildren().get(component);
 
                 if (childNode != null && childNode.isFile()) {
                     duplicates.add(path);
-                    break;
                 }
                 else if (childNode != null && !childNode.isFile()) {
                     curNode = childNode;
@@ -197,11 +203,9 @@ public class NamingServer implements Service, Registration
                     curNode.addChild(component, new PathNode(new Path(curNode.getNodePath(), component), null));
                     curNode = curNode.getChildren().get(component);
                 }
-
-                // Deal with the leaf node
-                curNode.setStubs(stubs);
-                registeredStubs.add(stubs);
             }
+            // Deal with the leaf node
+            curNode.setStubs(stubs);
         }
 
         return duplicates.toArray(new Path[0]);

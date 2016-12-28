@@ -81,8 +81,8 @@ public class PathNode
 
     public void addChild(String component, PathNode child) throws UnsupportedOperationException
     {
-        if (serverStubs == null)
-            throw new UnsupportedOperationException("Unable to add child to a leaf node");
+        // if (isFile())
+        //     throw new UnsupportedOperationException("Unable to add child to a leaf node");
 
         if (childNodes.containsKey(component))
             throw new UnsupportedOperationException("Unable to add an existing node again");
