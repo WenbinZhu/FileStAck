@@ -6,7 +6,6 @@ import java.net.*;
 import common.*;
 import rmi.*;
 import naming.*;
-import sun.org.mozilla.javascript.internal.EcmaError;
 
 /** Storage server.
 
@@ -189,6 +188,7 @@ public class StorageServer implements Storage, Command
         try {
             if (!parent.mkdirs())
                 prune(parent);
+
             return newFile.createNewFile();
         }
         catch (IOException ioe) {

@@ -3,8 +3,6 @@ package naming;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Random;
 
 import rmi.*;
@@ -39,7 +37,7 @@ public class NamingServer implements Service, Registration
     private PathNode root;
     private Skeleton<Registration> regSkeleton;
     private Skeleton<Service> serSkeleton;
-    private HashSet<ServerStubs> registeredStubs;
+    private ArrayList<ServerStubs> registeredStubs;
     private volatile boolean canStart;
 
     /** Creates the naming server object.
@@ -54,7 +52,7 @@ public class NamingServer implements Service, Registration
                 new InetSocketAddress(NamingStubs.REGISTRATION_PORT));
         this.serSkeleton = new Skeleton<Service>(Service.class, this,
                 new InetSocketAddress(NamingStubs.SERVICE_PORT));
-        this.registeredStubs = new HashSet<>();
+        this.registeredStubs = new ArrayList<>();
         this.canStart = true;
     }
 
@@ -155,7 +153,28 @@ public class NamingServer implements Service, Registration
     public boolean createFile(Path file)
         throws RMIException, FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (file == null)
+            throw new NullPointerException("Path parameter is null");
+
+        if (file.isRoot())
+            return false;
+
+        Random random = new Random();
+        String last = file.last();
+        PathNode parent = root.getNodeByPath(file.parent());
+        ServerStubs selectedStorage = registeredStubs.get(random.nextInt(registeredStubs.size()));
+
+        if (parent.isFile())
+            throw new FileNotFoundException("Parent is not a directory");
+
+        if (parent.getChildren().containsKey(last))
+            return false;
+
+        // Insert new node into directory tree
+        parent.addChild(last, new PathNode(file, selectedStorage));
+
+        // Create file on the selected storage server
+        return selectedStorage.commandStub.create(file);
     }
 
     @Override
@@ -214,7 +233,7 @@ public class NamingServer implements Service, Registration
         ServerStubs stubs = new ServerStubs(client_stub, command_stub);
 
         if (registeredStubs.contains(stubs))
-            throw new IllegalStateException("This storage server has already registered");
+            throw new IllegalStateException("Storage server has already registered");
 
         registeredStubs.add(stubs);
 

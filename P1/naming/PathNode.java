@@ -111,18 +111,4 @@ public class PathNode
 
         return curNode;
     }
-
-    public PathNode getPrefixNodeByPath(Path path)
-    {
-        PathNode curNode = this;
-
-        for (String component : path) {
-            if (!curNode.childNodes.containsKey(component))
-                return curNode;
-
-            curNode = curNode.childNodes.get(component);
-        }
-
-        return curNode;
-    }
 }
