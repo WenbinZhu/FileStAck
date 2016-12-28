@@ -166,7 +166,7 @@ public class NamingServer implements Service, Registration
         if (!pathNode.isFile())
             throw new FileNotFoundException("Unable to get storage stub, path is a directory");
 
-        return root.getStubs().storageStub;
+        return pathNode.getStubs().storageStub;
     }
 
     // The method register is documented in Registration.java.
