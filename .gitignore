@@ -4,3 +4,4 @@
 out/
 *.class
 javadoc-all/
+*.jar
