@@ -74,8 +74,8 @@ public class StorageServerApp extends ServerApplication
         // Check the command line arguments.
         if(arguments.length != 3)
         {
-            throw new BadUsageException("arguments: hostname naming-server " +
-                                        "local-path");
+            throw new BadUsageException("usage: storage local_hostname " +
+                                        "naming_server directory");
         }
 
         // Create the storage server object using the absolute version of the

@@ -33,6 +33,16 @@ public class Launcher
 
         applications.put("naming", new NamingServerApp());
         applications.put("storage", new StorageServerApp());
+        applications.put("ls", new List());
+        applications.put("mkdir", new MakeDirectory());
+        applications.put("touch", new Touch());
+        applications.put("get", new Get());
+        applications.put("put", new Put());
+        applications.put("rm", new Remove());
+        applications.put("parse", new Parse());
+        applications.put("pwd", new PrintWorkingDirectory());
+        applications.put("cd", new ChangeDirectoryDummy());
+
 
         // Check that at least an application name is present. If not, print a
         // help message and exit.
@@ -72,14 +82,14 @@ public class Launcher
         Arrays.sort(names);
 
         for(int index = 0; index < names.length; ++index)
-            System.out.println("  " + names[index]);
+            System.out.print(" " + names[index]);
+
+        System.out.println();
 
         // Display additional help information and exit.
         System.out.println("\nfor example, the arguments to start a storage " +
                            "server:");
         System.out.println("  storage 127.0.0.1 127.0.0.1 storage-test/");
-        System.out.println("\npaths can take two forms:");
-        System.out.println("  naming-server:remote-path    OR    local-path");
 
         System.exit(EXIT_FAILURE);
     }

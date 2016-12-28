@@ -33,7 +33,7 @@ public class StorageServer implements Storage, Command
             throw new NullPointerException("Parameter root is null");
 
         if (!root.exists() || !root.isDirectory())
-            throw new IllegalArgumentException("Root does not exist or refer to a directory");
+            throw new IllegalArgumentException("Root does not exist or refers to a directory");
 
         this.root = root;
         this.storageSkeleton = new Skeleton<Storage>(Storage.class, this);
@@ -186,9 +186,9 @@ public class StorageServer implements Storage, Command
         File parent = newFile.getParentFile();
 
         try {
-            if (!parent.mkdirs())
-                prune(parent);
-
+            // if (!parent.mkdirs())
+            //     prune(parent);
+            parent.mkdirs();
             return newFile.createNewFile();
         }
         catch (IOException ioe) {

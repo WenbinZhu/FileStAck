@@ -170,11 +170,15 @@ public class NamingServer implements Service, Registration
         if (parent.getChildren().containsKey(last))
             return false;
 
-        // Insert new node into directory tree
-        parent.addChild(last, new PathNode(file, selectedStorage));
-
         // Create file on the selected storage server
-        return selectedStorage.commandStub.create(file);
+        boolean success = selectedStorage.commandStub.create(file);
+
+        // Append new node to the directory tree
+        // if storage server has successfully created the file
+        if (success)
+            parent.addChild(last, new PathNode(file, selectedStorage));
+
+        return success;
     }
 
     @Override

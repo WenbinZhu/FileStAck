@@ -98,6 +98,8 @@ public class PathNode
         childNodes.remove(component);
     }
 
+    /** Get PathNode from the directory tree given a path
+     */
     public PathNode getNodeByPath(Path path) throws FileNotFoundException
     {
         PathNode curNode = this;

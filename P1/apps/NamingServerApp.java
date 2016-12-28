@@ -40,7 +40,7 @@ public class NamingServerApp extends ServerApplication
         throws BadUsageException, RMIException
     {
         if(arguments.length != 0)
-            throw new BadUsageException("naming server expects no arguments");
+            throw new BadUsageException("usage: naming");
 
         server = new StoppingNamingServer();
         server.start();

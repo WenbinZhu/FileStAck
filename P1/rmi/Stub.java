@@ -46,6 +46,7 @@ public abstract class Stub
                       <code>RMIException</code>, or if an object implementing
                       this interface cannot be dynamically created.
         */
+    @SuppressWarnings("unchecked")
     public static <T> T create(Class<T> c, Skeleton<T> skeleton)
         throws UnknownHostException
     {
@@ -100,6 +101,7 @@ public abstract class Stub
                       <code>RMIException</code>, or if an object implementing
                       this interface cannot be dynamically created.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T create(Class<T> c, Skeleton<T> skeleton,
                                String hostname)
     {
@@ -140,6 +142,7 @@ public abstract class Stub
                       <code>RMIException</code>, or if an object implementing
                       this interface cannot be dynamically created.
      */
+    @SuppressWarnings("unchecked")
     public static <T> T create(Class<T> c, InetSocketAddress address)
     {
         if (c == null || address == null)
