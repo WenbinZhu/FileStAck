@@ -3,7 +3,9 @@ package naming;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.Random;
 
 import rmi.*;
 import common.*;
@@ -127,13 +129,26 @@ public class NamingServer implements Service, Registration
         if (path == null)
             throw new NullPointerException("Path parameter is null");
 
-        return root.getNodeByPath(path).isFile();
+        return !root.getNodeByPath(path).isFile();
     }
 
     @Override
     public String[] list(Path directory) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (directory == null)
+            throw new NullPointerException("Path parameter is null");
+
+        PathNode pathNode = root.getNodeByPath(directory);
+        ArrayList<String> contents = new ArrayList<>();
+
+        if (pathNode.isFile())
+            throw new FileNotFoundException("Path parameter does not refer to a directory");
+
+        for (String component : pathNode.getChildren().keySet()) {
+            contents.add(component);
+        }
+
+        return contents.toArray(new String[0]);
     }
 
     @Override
@@ -146,7 +161,24 @@ public class NamingServer implements Service, Registration
     @Override
     public boolean createDirectory(Path directory) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (directory == null)
+            throw new NullPointerException("Path parameter is null");
+
+        if (directory.isRoot())
+            return false;
+
+        String last = directory.last();
+        PathNode parent = root.getNodeByPath(directory.parent());
+
+        if (parent.isFile())
+            throw new FileNotFoundException("Parent is not a directory");
+
+        if (parent.getChildren().containsKey(last))
+            return false;
+
+        parent.addChild(last, new PathNode(directory, null));
+
+        return true;
     }
 
     @Override
@@ -200,7 +232,7 @@ public class NamingServer implements Service, Registration
                     curNode = childNode;
                 }
                 else {
-                    curNode.addChild(component, new PathNode(new Path(curNode.getNodePath(), component), null));
+                    curNode.addChild(component, new PathNode(new Path(curNode.getPath(), component), null));
                     curNode = curNode.getChildren().get(component);
                 }
             }

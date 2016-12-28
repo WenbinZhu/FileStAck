@@ -59,7 +59,7 @@ public class PathNode
         return serverStubs != null;
     }
 
-    public Path getNodePath()
+    public Path getPath()
     {
         return nodePath;
     }
@@ -105,6 +105,20 @@ public class PathNode
         for (String component : path) {
             if (!curNode.childNodes.containsKey(component))
                 throw new FileNotFoundException("Unable to get node from path");
+
+            curNode = curNode.childNodes.get(component);
+        }
+
+        return curNode;
+    }
+
+    public PathNode getPrefixNodeByPath(Path path)
+    {
+        PathNode curNode = this;
+
+        for (String component : path) {
+            if (!curNode.childNodes.containsKey(component))
+                return curNode;
 
             curNode = curNode.childNodes.get(component);
         }
