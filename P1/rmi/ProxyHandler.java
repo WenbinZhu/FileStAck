@@ -39,6 +39,7 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
                     return false;
 
                 ProxyHandler ph = (ProxyHandler) Proxy.getInvocationHandler(args[0]);
+
                 return ci.equals(ph.getClassInterface()) && sockAddr.equals(ph.getSockAddr());
             }
 
@@ -51,12 +52,17 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
             }
 
             default: {
-                try {
-                    Socket stubSocket = new Socket();
-                    stubSocket.connect(sockAddr);
-                    ObjectOutputStream output = new ObjectOutputStream(stubSocket.getOutputStream());
-                    ObjectInputStream input = new ObjectInputStream(stubSocket.getInputStream());
+                ObjectOutputStream output = null;
+                ObjectInputStream input = null;
+                Socket stubSocket = null;
 
+                try {
+                    stubSocket = new Socket();
+                    stubSocket.connect(sockAddr);
+                    output = new ObjectOutputStream(stubSocket.getOutputStream());
+                    input = new ObjectInputStream(stubSocket.getInputStream());
+
+                    // Send serialized method name, parameter types and args to the client
                     output.writeObject(method.getName());
                     output.writeObject(method.getParameterTypes());
                     output.writeObject(args);
@@ -66,14 +72,10 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
                     if (resultObj instanceof Exception)
                         throw ((Exception) resultObj).getCause();
 
-                    output.close();
-                    input.close();
-                    stubSocket.close();
-
                     return resultObj;
                 }
                 catch (Exception e) {
-                    // Method may throw their own exceptions
+                    // Invoked methods may throw their own exceptions
                     if (Arrays.asList(method.getExceptionTypes()).contains(e.getClass()))
                         throw e;
 
@@ -81,6 +83,16 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
                         throw new RMIException(e);
 
                     throw e;
+                }
+                finally {
+                    try {
+                        if (input != null) input.close();
+                        if (output != null) output.close();
+                        if (stubSocket != null) stubSocket.close();
+                    }
+                    catch (IOException ioe) {
+                        // ioe.printStackTrace();
+                    }
                 }
             }
         }

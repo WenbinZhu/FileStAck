@@ -60,6 +60,7 @@ public abstract class Stub
             throw new Error("Parameter c is not a remote interface");
 
         // InetAddress.getLocalHost() may throw UnknownHostException
+        // if no address can be found for the local host.
         InetSocketAddress sockAddr = new InetSocketAddress(InetAddress.getLocalHost(), skeleton.getSockAddr().getPort());
         ProxyHandler<T> proxyHandler = new ProxyHandler<>(c, sockAddr);
 

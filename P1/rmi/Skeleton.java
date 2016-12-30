@@ -164,6 +164,7 @@ public class Skeleton<T>
 
         try {
             if (sockAddr == null) {
+                // The computer randomly assign an available port
                 serverSocket = new ServerSocket(0);
                 sockAddr = new InetSocketAddress(serverSocket.getLocalPort());
             }
@@ -192,9 +193,11 @@ public class Skeleton<T>
     {
         if (thread == null || !thread.isAlive())
             return;
+
         listenThread.cancel();
 
         try {
+            // Wait for the listening thread to die
             thread.join();
             stopped(null);
         }
@@ -204,6 +207,12 @@ public class Skeleton<T>
         }
     }
 
+    /** Check if the given interface is a remote interface
+
+        <p>
+         A remote interface's methods are all marked as throwing
+         <code>RMIException</code>.
+     */
     public static boolean isRemoteInterface(Class<?> c) {
         for (Method method : c.getMethods()) {
             boolean isRemote = false;

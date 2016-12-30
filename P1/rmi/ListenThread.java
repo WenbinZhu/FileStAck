@@ -6,15 +6,17 @@ import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-/**
- *  RMI Skeleton's ListenThread, creates multiple ClientThreads
- *  to communicate with the client stubs
- */
+/** RMI Skeleton's Listening Thread
+
+    <p>
+    Upon receiving a client request, this thread creates multiple
+    client threads to communicate with the client stubs.
+*/
 public class ListenThread<T> implements Runnable {
     private Class<T> ci;
     private T server;
-    private ServerSocket serverSocket;
-    private volatile boolean isCancelled;
+    private ServerSocket serverSocket;      // the socket waiting for client request
+    private volatile boolean isCancelled;   // make the flag volatile to ensure thread safety
 
     public ListenThread(Class<T> c, T server, ServerSocket serverSocket)
     {
@@ -42,9 +44,12 @@ public class ListenThread<T> implements Runnable {
         }
     }
 
+    /** Stop the thread and close the listening socket
+     */
     public void cancel()
     {
         isCancelled = true;
+
         if (serverSocket != null && !serverSocket.isClosed())
             try {
                 serverSocket.close();
@@ -58,6 +63,7 @@ public class ListenThread<T> implements Runnable {
 
     private class ClientThread implements Runnable
     {
+        // The socket to communicate with client stubs
         private Socket clientSocket;
 
         public ClientThread(Socket clientSocket)
@@ -82,7 +88,7 @@ public class ListenThread<T> implements Runnable {
                 input = new ObjectInputStream(clientSocket.getInputStream());
                 output = new ObjectOutputStream(clientSocket.getOutputStream());
 
-
+                // Get method name, parameter types and args from client stub
                 String methodName = (String) input.readObject();
                 Class<?>[] paramTypes = (Class<?>[]) input.readObject();
                 Object[] args = (Object[]) input.readObject();
@@ -93,13 +99,16 @@ public class ListenThread<T> implements Runnable {
                 }
                 catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException |
                        SecurityException | IllegalArgumentException e) {
+                    // Transmit remote exceptions back to the client
                     resultObj = e;
                 }
 
                 output.writeObject(resultObj);
             }
+            // This exception is caused by readObject()
             catch (ClassNotFoundException e) {
                 try {
+                    // Send exceptions back to
                     output = new ObjectOutputStream(clientSocket.getOutputStream());
                     output.writeObject(e);
                 }
