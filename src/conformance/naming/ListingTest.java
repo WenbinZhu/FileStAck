@@ -5,7 +5,7 @@ import java.io.*;
 import test.*;
 import common.*;
 
-/** Test the naming server <code>list</code> and <code>isDirectory</code>
+/** Tests the naming server <code>list</code> and <code>isDirectory</code>
     methods.
 
     <p>

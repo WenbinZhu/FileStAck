@@ -186,6 +186,16 @@ class TestStorageServer implements Storage, Command
                                                 "implemented");
     }
 
+    /** Throws <code>UnsupportedOperationException</code>. */
+    @Override
+    public boolean copy(Path file, Storage server)
+    {
+        test.failure(new TestFailed("unexpected call to copy method in " +
+                                    "storage server"));
+
+        throw new UnsupportedOperationException("copy method not implemented");
+    }
+
     /** Client interface skeleton.
 
         <p>
