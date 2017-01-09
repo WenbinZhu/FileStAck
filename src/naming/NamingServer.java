@@ -8,6 +8,7 @@ import java.util.Random;
 import rmi.*;
 import common.*;
 import storage.*;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /** Naming server.
 
@@ -121,6 +122,21 @@ public class NamingServer implements Service, Registration
     }
 
     // The following methods are documented in Service.java.
+
+
+    @Override
+    public void lock(Path path, boolean exclusive)
+        throws RMIException, FileNotFoundException
+    {
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public void unlock(Path path, boolean exclusive) throws RMIException
+    {
+        throw new NotImplementedException();
+    }
+
     @Override
     public boolean isDirectory(Path path) throws FileNotFoundException
     {
