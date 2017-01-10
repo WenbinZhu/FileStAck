@@ -6,6 +6,7 @@ import java.net.*;
 import common.*;
 import rmi.*;
 import naming.*;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /** Storage server.
 
@@ -27,7 +28,7 @@ public class StorageServer implements Storage, Command
                     directory will be accessible through the storage server.
         @throws NullPointerException If <code>root</code> is <code>null</code>.
     */
-    public StorageServer(File root)
+    public StorageServer(File root, int storagePort, int commandPort)
     {
         if (root == null)
             throw new NullPointerException("Parameter root is null");
@@ -35,10 +36,20 @@ public class StorageServer implements Storage, Command
         if (!root.exists() || !root.isDirectory())
             throw new IllegalArgumentException("Root does not exist or refers to a directory");
 
+        InetSocketAddress storageAddress = storagePort > 0 && storagePort < 65536 ?
+                                            new InetSocketAddress(storagePort) : null;
+        InetSocketAddress commandAddress = commandPort > 0 && commandPort < 65536 ?
+                                            new InetSocketAddress(commandPort) : null;
+
         this.root = root;
-        this.storageSkeleton = new Skeleton<Storage>(Storage.class, this);
-        this.commandSkeleton = new Skeleton<Command>(Command.class, this);
+        this.storageSkeleton = new Skeleton<Storage>(Storage.class, this, storageAddress);
+        this.commandSkeleton = new Skeleton<Command>(Command.class, this, commandAddress);
         this.canStart = true;
+    }
+
+    public StorageServer(File root)
+    {
+        this(root, 0, 0);
     }
 
     /** Starts the storage server and registers it with the given naming
@@ -212,6 +223,38 @@ public class StorageServer implements Storage, Command
             return deleteDir(f);
 
         return f.delete();
+    }
+
+    @Override
+    public boolean copy(Path file, Storage server)
+        throws RMIException, FileNotFoundException, IOException
+    {
+        if (file == null || server == null)
+            throw new NullPointerException("Copy parameters contains null");
+
+        File f = file.toFile(root);
+
+        if (f.exists() && !f.isFile())
+            return false;
+
+        if (f.exists())
+            delete(file);
+
+        int blockSize = 1 << 20;            // copy 1 MB each time
+        long offset = 0;
+        long fileSize = server.size(file);
+
+        // Create operation must be placed after size operation
+        // to prevent previous illegal path creating new file
+        create(file);
+
+        while (offset < fileSize) {
+            int bytesCopied = (int) Math.min(fileSize - offset, blockSize);
+            write(file, offset, server.read(file, offset, bytesCopied));
+            offset += bytesCopied;
+        }
+
+        return true;
     }
 
     /** Delete directory recursively

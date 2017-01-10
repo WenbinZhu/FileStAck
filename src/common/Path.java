@@ -19,7 +19,7 @@ import java.util.*;
     not permitted within path components. The forward slash is the delimeter,
     and the colon is reserved as a delimeter for application use.
  */
-public class Path implements Iterable<String>, Serializable
+public class Path implements Iterable<String>, Comparable<Path>, Serializable
 {
     private ArrayList<String> components;
 
@@ -293,4 +293,54 @@ public class Path implements Iterable<String>, Serializable
             throw new UnsupportedOperationException("Remove operation not supported in Path class");
         }
     }
+
+    /** Compares this path to another.
+
+     <p>
+     An ordering upon <code>Path</code> objects is provided to prevent
+     deadlocks between applications that need to lock multiple filesystem
+     objects simultaneously. By convention, paths that need to be locked
+     simultaneously are locked in increasing order.
+
+     <p>
+     Because locking a path requires locking every component along the path,
+     the order is not arbitrary. For example, suppose the paths were ordered
+     first by length, so that <code>/etc</code> precedes
+     <code>/bin/cat</code>, which precedes <code>/etc/dfs/conf.txt</code>.
+
+     <p>
+     Now, suppose two users are running two applications, such as two
+     instances of <code>cp</code>. One needs to work with <code>/etc</code>
+     and <code>/bin/cat</code>, and the other with <code>/bin/cat</code> and
+     <code>/etc/dfs/conf.txt</code>.
+
+     <p>
+     Then, if both applications follow the convention and lock paths in
+     increasing order, the following situation can occur: the first
+     application locks <code>/etc</code>. The second application locks
+     <code>/bin/cat</code>. The first application tries to lock
+     <code>/bin/cat</code> also, but gets blocked because the second
+     application holds the lock. Now, the second application tries to lock
+     <code>/etc/dfs/conf.txt</code>, and also gets blocked, because it would
+     need to acquire the lock for <code>/etc</code> to do so. The two
+     applications are now deadlocked.
+
+     <p>
+     As a general rule to prevent this scenario, the ordering is chosen so
+     that objects that are near each other in the path hierarchy are also
+     near each other in the ordering. That is, in the above example, there is
+     not an object such as <code>/bin/cat</code> between two objects that are
+     both under <code>/etc</code>.
+
+     @param other The other path.
+     @return Zero if the two paths are equal, a negative number if this path
+     precedes the other path, or a positive number if this path
+     follows the other path.
+     */
+    @Override
+    public int compareTo(Path other)
+    {
+        return this.toString().compareTo(other.toString());
+    }
+
 }

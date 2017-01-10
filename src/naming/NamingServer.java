@@ -1,9 +1,10 @@
 package naming;
 
 import java.io.*;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Random;
+import java.util.ArrayList;
+import java.net.InetSocketAddress;
+import java.util.concurrent.ConcurrentHashMap;
 
 import rmi.*;
 import common.*;
@@ -38,6 +39,7 @@ public class NamingServer implements Service, Registration
     private Skeleton<Registration> regSkeleton;
     private Skeleton<Service> serSkeleton;
     private ArrayList<ServerStubs> registeredStubs;
+    private ConcurrentHashMap<Path, ReadWriteLock> lockTable;
     private volatile boolean canStart;
 
     /** Creates the naming server object.
@@ -48,11 +50,15 @@ public class NamingServer implements Service, Registration
     public NamingServer()
     {
         this.root = new PathNode(new Path(), null);
+
         this.regSkeleton = new Skeleton<Registration>(Registration.class, this,
                 new InetSocketAddress(NamingStubs.REGISTRATION_PORT));
         this.serSkeleton = new Skeleton<Service>(Service.class, this,
                 new InetSocketAddress(NamingStubs.SERVICE_PORT));
+
         this.registeredStubs = new ArrayList<>();
+        this.lockTable = new ConcurrentHashMap<>();
+        this.lockTable.put(root.getPath(), new ReadWriteLock());
         this.canStart = true;
     }
 
@@ -121,6 +127,104 @@ public class NamingServer implements Service, Registration
     }
 
     // The following methods are documented in Service.java.
+    @Override
+    public void lock(Path path, boolean exclusive)
+        throws RMIException, FileNotFoundException
+    {
+        if (path == null)
+            throw new NullPointerException("Path parameter is null");
+
+        // Test if the path is valid
+        PathNode node = root.getNodeByPath(path);
+
+        PathNode curNode = root;
+        Path curPath = curNode.getPath();
+
+        // Lock root node
+        try {
+            if (path.isRoot() && exclusive) {
+                lockTable.get(root.getPath()).lockExclusive();
+            }
+            else {
+                lockTable.get(root.getPath()).lockShared();
+            }
+        }
+        catch (InterruptedException ie) {
+            return;
+        }
+
+        // Lock along the path
+        for (String component : path) {
+            if (curNode.getChildren().containsKey(component)) {
+                curNode = curNode.getChildren().get(component);
+                curPath = curNode.getPath();
+
+                if (!lockTable.containsKey(curPath))
+                    lockTable.put(curPath, new ReadWriteLock());
+
+                try {
+                    if (exclusive && component.equals(path.last()))
+                        lockTable.get(curPath).lockExclusive();
+                    else
+                        lockTable.get(curPath).lockShared();
+                }
+                catch (InterruptedException ie) {
+                    throw new IllegalStateException("Naming server has shut down, " +
+                                                    "lock attempt interrupted");
+                }
+            }
+            else {
+                // Unlock all previously locked paths when locking fails
+                unlock(curPath, false);
+                throw new FileNotFoundException("Locking fails at some node");
+            }
+        }
+    }
+
+    @Override
+    public void unlock(Path path, boolean exclusive) throws RMIException
+    {
+        if (path == null)
+            throw new NullPointerException("Path parameter is null");
+
+        // Test if the path is valid
+        try {
+            root.getNodeByPath(path);
+        }
+        catch (FileNotFoundException fne) {
+            throw new IllegalArgumentException("Unable to find path for unlocking");
+        }
+
+        String last = path.isRoot() ? null : path.last();
+        Path curPath = path;
+
+        // Unlock along the path
+        while (!curPath.isRoot()) {
+            if (curPath.last().equals(last) && exclusive) {
+                if (lockTable.containsKey(curPath))
+                    lockTable.get(curPath).unlockExclusive();
+                else
+                    throw new IllegalArgumentException("Unable to find path for unlocking parents");
+            }
+            else {
+                if (lockTable.containsKey(curPath))
+                    lockTable.get(curPath).unlockShared();
+                else
+                    throw new IllegalArgumentException("Unable to find path for unlocking parents");
+            }
+
+            curPath = curPath.parent();
+        }
+
+        // Unlock root node in the last
+        if (path.isRoot() && exclusive) {
+            lockTable.get(root.getPath()).unlockExclusive();
+        }
+        else {
+            lockTable.get(root.getPath()).unlockShared();
+        }
+    }
+
     @Override
     public boolean isDirectory(Path path) throws FileNotFoundException
     {
