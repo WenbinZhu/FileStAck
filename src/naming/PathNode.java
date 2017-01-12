@@ -5,7 +5,9 @@ import storage.Command;
 import storage.Storage;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 /** Storage and Command stub pair
  */
@@ -44,13 +46,17 @@ class ServerStubs
 public class PathNode
 {
     private Path nodePath;
-    private ServerStubs serverStubs;
+    private int accessTime;
+    private ServerStubs serverStubs;    // Storage server of the original copy
+    private HashSet<ServerStubs> replicaStubs;
     private HashMap<String, PathNode> childNodes;
 
     public PathNode(Path nodePath, ServerStubs serverStubs)
     {
         this.nodePath = nodePath;
+        this.accessTime = 0;
         this.serverStubs = serverStubs;
+        this.replicaStubs = new HashSet<>();
         this.childNodes = new HashMap<>();
     }
 
@@ -112,5 +118,40 @@ public class PathNode
         }
 
         return curNode;
+    }
+
+    /** Increase the node's access time
+
+        <p>
+        Return true if the access time is beyond the pre-set multiple
+        and then reset the access time to 0.
+     */
+    public boolean incAccessTime(int multiple) {
+        if (++accessTime > multiple) {
+            accessTime = 0;
+            return true;
+        }
+
+        return false;
+    }
+
+    public void resetAccessTime() {
+        accessTime = 0;
+    }
+
+    public HashSet<ServerStubs> getReplicaStubs() {
+        return replicaStubs;
+    }
+
+    public void addReplicaStub(ServerStubs serverStubs) {
+        replicaStubs.add(serverStubs);
+    }
+
+    public int getReplicaSize() {
+        return replicaStubs.size();
+    }
+
+    public void removeReplicaStub(ServerStubs serverStubs) {
+        replicaStubs.remove(serverStubs);
     }
 }

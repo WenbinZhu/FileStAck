@@ -1,8 +1,7 @@
 package naming;
 
 import java.io.*;
-import java.util.Random;
-import java.util.ArrayList;
+import java.util.*;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -41,6 +40,10 @@ public class NamingServer implements Service, Registration
     private ArrayList<ServerStubs> registeredStubs;
     private ConcurrentHashMap<Path, ReadWriteLock> lockTable;
     private volatile boolean canStart;
+
+    private static final double ALPHA = 0.2;
+    private static final int MULTIPLE = 20;
+    private static final int REPLICA_UPPER_BOUND = 20;
 
     /** Creates the naming server object.
 
@@ -163,10 +166,20 @@ public class NamingServer implements Service, Registration
                     lockTable.put(curPath, new ReadWriteLock());
 
                 try {
-                    if (exclusive && component.equals(path.last()))
+                    if (exclusive && component.equals(path.last())) {
                         lockTable.get(curPath).lockExclusive();
-                    else
+
+                        if (curNode.isFile()) {
+                            curNode.resetAccessTime();
+                            deleteReplicas(curNode);
+                        }
+                    }
+                    else {
                         lockTable.get(curPath).lockShared();
+
+                        if (curNode.isFile() && curNode.incAccessTime(MULTIPLE))
+                            replicate(curNode);
+                    }
                 }
                 catch (InterruptedException ie) {
                     throw new IllegalStateException("Naming server has shut down, " +
@@ -368,5 +381,52 @@ public class NamingServer implements Service, Registration
         }
 
         return duplicates.toArray(new Path[0]);
+    }
+
+    // The following methods are private auxiliary methods
+    private void replicate(PathNode node) {
+        if (node.getReplicaSize() >= REPLICA_UPPER_BOUND)
+            return;
+
+        int NumToReplicate = (int) (ALPHA * MULTIPLE);
+
+        // Get all the storage servers that do not contain the replicas of this path
+        HashSet<ServerStubs> stubsSet = new HashSet<>(registeredStubs);
+        stubsSet.removeAll(node.getReplicaStubs());
+        stubsSet.remove(node.getStubs());
+
+        Iterator<ServerStubs> iter = stubsSet.iterator();
+
+        for (int i = 0; i < NumToReplicate && iter.hasNext() && node.getReplicaSize() < REPLICA_UPPER_BOUND;
+             i++, iter = stubsSet.iterator()) {
+
+            ServerStubs serverToReplicate = iter.next();
+
+            try {
+                if (serverToReplicate.commandStub.copy(node.getPath(), node.getStubs().storageStub)) {
+                    // Update the replica server list of this node
+                    // and the available server set for the next replication
+                    node.addReplicaStub(serverToReplicate);
+                    stubsSet.remove(serverToReplicate);
+                }
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void deleteReplicas(PathNode node) {
+        for (ServerStubs ss : node.getReplicaStubs()) {
+            try {
+                ss.commandStub.delete(node.getPath());
+            }
+            catch (RMIException rmie) {
+                rmie.printStackTrace();
+            }
+
+            // Update the replica server list of this node
+            node.removeReplicaStub(ss);
+        }
     }
 }
