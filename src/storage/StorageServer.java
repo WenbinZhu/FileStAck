@@ -6,7 +6,6 @@ import java.net.*;
 import common.*;
 import rmi.*;
 import naming.*;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /** Storage server.
 
@@ -215,6 +214,7 @@ public class StorageServer implements Storage, Command
             return false;
 
         File f = path.toFile(root);
+        File parent = path.parent().toFile(root);
 
         if (!f.exists())
             return false;
@@ -222,7 +222,12 @@ public class StorageServer implements Storage, Command
         if (f.isDirectory())
             return deleteDir(f);
 
-        return f.delete();
+        boolean success = f.delete();
+
+        if (parent.exists() && !parent.equals(root) && parent.list().length == 0)
+            parent.delete();
+
+        return success;
     }
 
     @Override

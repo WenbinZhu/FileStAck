@@ -120,6 +120,21 @@ public class PathNode
         return curNode;
     }
 
+    /** Get all the descendant nodes which refers to a file
+     */
+    public ArrayList<PathNode> getDescendants() {
+        ArrayList<PathNode> descendants = new ArrayList<>();
+
+        for (PathNode node : childNodes.values()) {
+            if (node.isFile())
+                descendants.add(node);
+            else
+                descendants.addAll(node.getDescendants());
+        }
+
+        return descendants;
+    }
+
     /** Increase the node's access time
 
         <p>
@@ -144,6 +159,8 @@ public class PathNode
     }
 
     public void addReplicaStub(ServerStubs serverStubs) {
+        // Naming server will ensure the nodes calling
+        // this method refers to a file, not a directory
         replicaStubs.add(serverStubs);
     }
 

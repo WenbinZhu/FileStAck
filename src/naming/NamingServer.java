@@ -324,7 +324,56 @@ public class NamingServer implements Service, Registration
     @Override
     public boolean delete(Path path) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (path == null)
+            throw new NullPointerException("Path parameter is null");
+
+        // Root directory cannot be deleted
+        if (path.isRoot())
+            return false;
+
+        boolean success = false;
+        PathNode node = root.getNodeByPath(path);
+        PathNode parent = root.getNodeByPath(path.parent());
+
+        // Path refers to a file
+        if (node.isFile()) {
+            // Delete all the replicas
+            deleteReplicas(node);
+
+            // Delete the original copy
+            try {
+                if (success = node.getStubs().commandStub.delete(path))
+                    parent.deleteChild(path.last());
+            }
+            catch (RMIException rmie) {
+                rmie.printStackTrace();
+                parent.deleteChild(path.last());
+            }
+
+            return success;
+        }
+        // Path refers to a directory
+        else {
+            // Find all the storage servers which has this directory
+            // and delete this directory from all the storage servers
+            ArrayList<PathNode> descendantStubs = node.getDescendants();
+
+            for (PathNode n : descendantStubs) {
+                // Also needs to delete all the replicas
+                deleteReplicas(n);
+
+                try {
+                    n.getStubs().commandStub.delete(path);
+                }
+                catch (RMIException rmie) {
+                    rmie.printStackTrace();
+                }
+            }
+
+            parent.deleteChild(path.last());
+
+            return true;
+        }
     }
 
     @Override

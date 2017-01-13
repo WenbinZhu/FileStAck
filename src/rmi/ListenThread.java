@@ -60,7 +60,6 @@ public class ListenThread<T> implements Runnable {
 
     }
 
-
     private class ClientThread implements Runnable
     {
         // The socket to communicate with client stubs
