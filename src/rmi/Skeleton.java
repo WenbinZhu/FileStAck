@@ -171,7 +171,7 @@ public class Skeleton<T>
             else
                 serverSocket = new ServerSocket(sockAddr.getPort());
 
-            listenThread = new ListenThread<>(ci, server, serverSocket);
+            listenThread = new ListenThread<>(ci, server, this, serverSocket);
             thread = new Thread(listenThread);
             thread.start();
         }

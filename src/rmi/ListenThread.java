@@ -15,10 +15,11 @@ import java.net.Socket;
 public class ListenThread<T> implements Runnable {
     private Class<T> ci;
     private T server;
+    private Skeleton<T> skeleton;
     private ServerSocket serverSocket;      // the socket waiting for client request
     private volatile boolean isCancelled;   // make the flag volatile to ensure thread safety
 
-    public ListenThread(Class<T> c, T server, ServerSocket serverSocket)
+    public ListenThread(Class<T> c, T server, Skeleton<T> skeleton, ServerSocket serverSocket)
     {
         if (c == null || server == null || serverSocket == null)
             throw new NullPointerException();
@@ -26,6 +27,7 @@ public class ListenThread<T> implements Runnable {
         this.isCancelled = false;
         this.ci = c;
         this.server = server;
+        this.skeleton = skeleton;
         this.serverSocket = serverSocket;
     }
 
@@ -105,9 +107,10 @@ public class ListenThread<T> implements Runnable {
                 output.writeObject(resultObj);
             }
             // This exception is caused by readObject()
-            catch (ClassNotFoundException e) {
+            catch (ClassNotFoundException | IOException e) {
+                skeleton.service_error(new RMIException(e));
                 try {
-                    // Send exceptions back to
+                    // Transmit exceptions back to the client
                     output = new ObjectOutputStream(clientSocket.getOutputStream());
                     output.writeObject(e);
                 }
@@ -115,9 +118,7 @@ public class ListenThread<T> implements Runnable {
                     // ioe.printStackTrace();
                 }
             }
-            catch (IOException ioe) {
-                // ioe.printStackTrace();
-            }
+
             finally {
                 try {
                     if (input != null) input.close();

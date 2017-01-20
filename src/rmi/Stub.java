@@ -53,15 +53,14 @@ public abstract class Stub
         if (c == null || skeleton == null)
             throw new NullPointerException("Unable to create stub");
 
-        if (skeleton.getSockAddr() == null || skeleton.getThread() == null)
+        if (skeleton.getSockAddr() == null && skeleton.getThread() == null)
             throw new IllegalStateException("Unable to create stub");
 
         if (!c.isInterface() || !Skeleton.isRemoteInterface(c))
             throw new Error("Parameter c is not a remote interface");
 
-        // InetAddress.getLocalHost() may throw UnknownHostException
-        // if no address can be found for the local host.
-        InetSocketAddress sockAddr = new InetSocketAddress(InetAddress.getLocalHost(), skeleton.getSockAddr().getPort());
+        InetSocketAddress sockAddr = new InetSocketAddress(
+                skeleton.getSockAddr().getHostName(), skeleton.getSockAddr().getPort());
         ProxyHandler<T> proxyHandler = new ProxyHandler<>(c, sockAddr);
 
         try {

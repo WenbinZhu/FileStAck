@@ -7,6 +7,7 @@ import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Arrays;
+import static java.lang.reflect.Proxy.isProxyClass;
 
 public class ProxyHandler<T> implements InvocationHandler, Serializable
 {
@@ -35,7 +36,10 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
     {
         switch (method.getName()) {
             case "equals": {
-                if (args.length == 1 && args[0] == null)
+                if (args.length < 1 || args[0] == null)
+                    return false;
+
+                if (!isProxyClass(args[0].getClass()))
                     return false;
 
                 ProxyHandler ph = (ProxyHandler) Proxy.getInvocationHandler(args[0]);
