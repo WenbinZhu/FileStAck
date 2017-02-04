@@ -80,10 +80,9 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
                     Object resultObj = input.readObject();
 
                     // Remote exceptions are transmitted back to the client
-                    if (resultObj instanceof InvocationTargetException)
-                        throw ((Exception) resultObj).getCause();
-
-                    if (resultObj instanceof ClassNotFoundException)
+                    if (resultObj instanceof InvocationTargetException
+                        || resultObj instanceof ClassNotFoundException || resultObj instanceof IllegalAccessException
+                        || resultObj instanceof IllegalArgumentException || resultObj instanceof SecurityException)
                         throw ((Exception) resultObj).getCause();
 
                     if (resultObj instanceof NoSuchMethodException)
