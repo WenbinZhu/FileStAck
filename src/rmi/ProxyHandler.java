@@ -2,6 +2,7 @@ package rmi;
 
 import java.io.*;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
@@ -48,10 +49,16 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
             }
 
             case "hashCode": {
+                if (args != null && args.length > 0)
+                    return args[0].hashCode();
+
                 return (sockAddr.toString() + ci.toString()).hashCode();
             }
 
             case "toString": {
+                if (args != null && args.length > 0)
+                    return args[0].toString();
+
                 return "Class: " + ci + ", Address: " + sockAddr;
             }
 
@@ -73,8 +80,14 @@ public class ProxyHandler<T> implements InvocationHandler, Serializable
                     Object resultObj = input.readObject();
 
                     // Remote exceptions are transmitted back to the client
-                    if (resultObj instanceof Exception)
+                    if (resultObj instanceof InvocationTargetException)
                         throw ((Exception) resultObj).getCause();
+
+                    if (resultObj instanceof ClassNotFoundException)
+                        throw ((Exception) resultObj).getCause();
+
+                    if (resultObj instanceof NoSuchMethodException)
+                        throw new RMIException("No such method in interface");
 
                     return resultObj;
                 }
