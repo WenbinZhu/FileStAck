@@ -86,8 +86,9 @@ public class ListenThread<T> implements Runnable {
                 if (clientSocket == null || clientSocket.isClosed())
                     return;
 
-                input = new ObjectInputStream(clientSocket.getInputStream());
                 output = new ObjectOutputStream(clientSocket.getOutputStream());
+                output.flush();
+                input = new ObjectInputStream(clientSocket.getInputStream());
 
                 // Get method name, parameter types and args from client stub
                 String methodName = (String) input.readObject();
